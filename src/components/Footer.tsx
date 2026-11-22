@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { supabase } from '../lib/supabase'
 
 interface Comment {
   id: string
@@ -6,58 +7,63 @@ interface Comment {
   message: string
   profilePhoto?: string
   timestamp: string
-  isAdmin?: boolean
+}
+
+interface CommentRow {
+  id: string
+  name: string
+  message: string
+  profile_photo: string | null
+  created_at: string
+}
+
+const EXAMPLE_COMMENTS: Comment[] = [
+  {
+    id: '1',
+    name: 'Budi Santoso',
+    message: 'Karya yang luar biasa! Sangat menginspirasi.',
+    timestamp: '2 hari lalu'
+  },
+  {
+    id: '2',
+    name: 'Siti Nurhaliza',
+    message: 'Design dan coding-nya sempurna. Terus berkarya!',
+    timestamp: '1 hari lalu'
+  }
+]
+
+function formatTimestamp(createdAt: string): string {
+  const diffMs = Date.now() - new Date(createdAt).getTime()
+  if (!Number.isFinite(diffMs)) return 'Baru saja'
+
+  const minutes = Math.floor(diffMs / 60000)
+  if (minutes < 1) return 'Baru saja'
+  if (minutes < 60) return `${minutes} menit lalu`
+
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours} jam lalu`
+
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days} hari lalu`
+
+  const months = Math.floor(days / 30)
+  if (months < 12) return `${months} bulan lalu`
+
+  return `${Math.floor(months / 12)} tahun lalu`
+}
+
+function toComment(row: CommentRow): Comment {
+  return {
+    id: row.id,
+    name: row.name,
+    message: row.message,
+    profilePhoto: row.profile_photo ?? undefined,
+    timestamp: formatTimestamp(row.created_at)
+  }
 }
 
 export default function Footer() {
-  const STORAGE_KEY = 'rocky-comments'
-  const [comments, setComments] = useState<Comment[]>(() => {
-    if (typeof window === 'undefined') {
-      return [
-        {
-          id: '1',
-          name: 'Budi Santoso',
-          message: 'Karya yang luar biasa! Sangat menginspirasi.',
-          timestamp: '2 hari lalu',
-          isAdmin: false
-        },
-        {
-          id: '2',
-          name: 'Siti Nurhaliza',
-          message: 'Design dan coding-nya sempurna. Terus berkarya!',
-          timestamp: '1 hari lalu',
-          isAdmin: false
-        }
-      ]
-    }
-
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY)
-      if (!stored) {
-        return [
-          {
-            id: '1',
-            name: 'Budi Santoso',
-            message: 'Karya yang luar biasa! Sangat menginspirasi.',
-            timestamp: '2 hari lalu',
-            isAdmin: false
-          },
-          {
-            id: '2',
-            name: 'Siti Nurhaliza',
-            message: 'Design dan coding-nya sempurna. Terus berkarya!',
-            timestamp: '1 hari lalu',
-            isAdmin: false
-          }
-        ]
-      }
-
-      const parsed = JSON.parse(stored)
-      return Array.isArray(parsed) && parsed.length > 0 ? parsed : []
-    } catch {
-      return []
-    }
-  })
+  const [comments, setComments] = useState<Comment[]>(supabase ? [] : EXAMPLE_COMMENTS)
 
   const [contactForm, setContactForm] = useState({
     name: '',
@@ -72,15 +78,34 @@ export default function Footer() {
   })
 
   const [contactSuccess, setContactSuccess] = useState(false)
-  const [adminMode, setAdminMode] = useState(false)
-  const [adminPassword, setAdminPassword] = useState('')
   const [commentPage, setCommentPage] = useState(0)
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(comments))
-  }, [comments])
+    if (!supabase) return
 
-  const ADMIN_PASSWORD = 'rocky2026'
+    let cancelled = false
+
+    supabase
+      .from('comments')
+      .select('id, name, message, profile_photo, created_at')
+      .order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (cancelled) return
+
+        if (error) {
+          console.error('Gagal memuat komentar:', error)
+          setComments(EXAMPLE_COMMENTS)
+          return
+        }
+
+        setComments((data ?? []).map((row) => toComment(row as CommentRow)))
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const commentsPerPage = 2
   const totalPages = Math.max(1, Math.ceil(comments.length / commentsPerPage))
   const visibleComments = comments.slice(commentPage * commentsPerPage, commentPage * commentsPerPage + commentsPerPage)
@@ -88,24 +113,6 @@ export default function Footer() {
   useEffect(() => {
     setCommentPage((current) => Math.min(current, Math.max(0, totalPages - 1)))
   }, [totalPages])
-
-  const handleAdminLogin = () => {
-    if (adminPassword === ADMIN_PASSWORD) {
-      setAdminMode(true)
-      setAdminPassword('')
-    } else {
-      alert('Password salah!')
-      setAdminPassword('')
-    }
-  }
-
-  const handleDeleteComment = (commentId: string) => {
-    if (adminMode) {
-      const nextComments = comments.filter(c => c.id !== commentId)
-      setComments(nextComments)
-      setCommentPage((current) => Math.min(current, Math.max(0, Math.ceil(nextComments.length / commentsPerPage) - 1)))
-    }
-  }
 
   const handleContactSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -117,20 +124,41 @@ export default function Footer() {
     }
   }
 
-  const handleCommentSubmit = (e: React.FormEvent) => {
+  const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (commentForm.name && commentForm.message) {
+    if (!commentForm.name || !commentForm.message) return
+
+    const { name, message, profilePhoto } = commentForm
+
+    if (!supabase) {
       const newComment: Comment = {
-        id: Date.now().toString(),
-        name: commentForm.name,
-        message: commentForm.message,
-        profilePhoto: commentForm.profilePhoto,
+        id: `local-${Date.now()}`,
+        name,
+        message,
+        profilePhoto: profilePhoto || undefined,
         timestamp: 'Baru saja'
       }
       setComments((prev) => [newComment, ...prev])
       setCommentPage(0)
       setCommentForm({ name: '', message: '', profilePhoto: '' })
+      return
     }
+
+    const { data, error } = await supabase
+      .from('comments')
+      .insert({ name, message, profile_photo: profilePhoto || null })
+      .select('id, name, message, profile_photo, created_at')
+      .single()
+
+    if (error || !data) {
+      console.error('Gagal mengirim komentar:', error)
+      alert('Gagal mengirim komentar. Silakan coba lagi.')
+      return
+    }
+
+    setComments((prev) => [toComment(data as CommentRow), ...prev])
+    setCommentPage(0)
+    setCommentForm({ name: '', message: '', profilePhoto: '' })
   }
 
   const handleProfilePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -272,33 +300,6 @@ export default function Footer() {
                 </svg>
                 <h2 className="text-lg font-bold text-white sm:text-xl">Comments ({comments.length})</h2>
               </div>
-              {!adminMode && (
-                <button
-                  onClick={() => {
-                    const pwd = prompt('Enter admin password:')
-                    if (pwd) {
-                      setAdminPassword(pwd)
-                      if (pwd === ADMIN_PASSWORD) {
-                        setAdminMode(true)
-                      } else {
-                        alert('Password salah!')
-                      }
-                    }
-                  }}
-                  className="text-xs text-white/40 hover:text-white/60 transition"
-                  title="Admin mode"
-                >
-                  🔓
-                </button>
-              )}
-              {adminMode && (
-                <button
-                  onClick={() => setAdminMode(false)}
-                  className="text-xs bg-white/10 hover:bg-white/20 text-white/60 px-2 py-1 rounded transition"
-                >
-                  Logout
-                </button>
-              )}
             </div>
 
             {/* Comments List */}
@@ -320,21 +321,7 @@ export default function Footer() {
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-col items-start justify-between gap-1 sm:flex-row sm:items-center">
                         <p className="font-bold text-white text-sm sm:text-base">{comment.name}</p>
-                        <div className="flex items-center gap-2">
-                          <p className="text-[0.65rem] text-white/40 sm:text-xs">{comment.timestamp}</p>
-                          {adminMode && (
-                            <button
-                              onClick={() => handleDeleteComment(comment.id)}
-                              className="text-white/40 hover:text-red-400 transition p-1"
-                              aria-label="Delete comment"
-                              title="Delete comment"
-                            >
-                              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
-                          )}
-                        </div>
+                        <p className="text-[0.65rem] text-white/40 sm:text-xs">{comment.timestamp}</p>
                       </div>
                       <p className="mt-1 text-xs leading-relaxed text-white/70 sm:text-sm">{comment.message}</p>
                     </div>
