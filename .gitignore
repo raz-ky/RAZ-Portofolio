@@ -1,5 +1,4 @@
 node_modules
 dist
 .env
-VITE_SUPABASE_URL=nzfdyosfyfctqsoumqle
-VITE_SUPABASE_ANON_KEY=sb_publishable_NurYkg-hWRrPg1lUyB2Mlg_MKoJVM6z
+
