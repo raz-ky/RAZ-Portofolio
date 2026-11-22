@@ -4,7 +4,7 @@ export default function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
-    <header className="fixed left-0 top-0 z-50 flex w-full items-center justify-between px-4 py-4 mix-blend-difference md:px-8 md:py-5">
+    <header className={`fixed left-0 top-0 z-50 flex w-full items-center justify-between px-4 py-4 md:px-8 md:py-5 ${mobileMenuOpen ? '' : 'mix-blend-difference'}`}>
       <a href="#top" data-cursor className="text-sm font-black tracking-[-.05em] md:text-base">RAZ PROJECT<span className="text-[#20e8d0]">.</span></a>
       
       {/* Desktop Navigation */}

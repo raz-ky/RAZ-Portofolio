@@ -84,7 +84,7 @@ export const projects: Project[] = [
     category: 'BRAND SYSTEM',
     year: '2026',
     description: 'A clean digital platform for seamless laundry services.',
-    image: 'public/images/skylaunsry.png',
+    image: '/images/skylaunsry.png',
     link: 'https://skylaundry.vercel.app/',
   },
   {
@@ -102,7 +102,7 @@ export const projects: Project[] = [
     category: 'CREATIVE PLATFORM',
     year: '2026',
     description: 'A creative platform for seamless event planning and management.',
-    image: 'public/images/pacak.png',
+    image: '/images/pacak.png',
     link: 'https://pontianak-carnaval-khatulistiwa.vercel.app/',
   },
   

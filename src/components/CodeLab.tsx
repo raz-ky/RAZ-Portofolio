@@ -37,21 +37,24 @@ export default function CodeLab() {
       scrollTrigger: { trigger: section.current, start: 'top 85%' },
     })
 
-    // Cards animations with stagger
-    gsap.utils.toArray<HTMLElement>('.stack-card').forEach((card, index) => {
-      gsap.from(card, {
-        y: 80,
-        opacity: 0,
-        rotation: 2,
+    // One trigger for the whole track avoids creating a ScrollTrigger per card (114 cards).
+    gsap.fromTo(
+      '.stack-card',
+      { y: 80, opacity: 0, rotation: 2 },
+      {
+        y: 0,
+        opacity: 1,
+        rotation: 0,
         duration: 0.8,
         ease: 'power3.out',
-        delay: index * 0.05,
-        scrollTrigger: { trigger: card, start: 'top 88%' },
-      })
-    })
+        stagger: { each: 0.01 },
+        scrollTrigger: { trigger: section.current, start: 'top 85%' },
+      }
+    )
   }, { scope: section })
 
-  const cards = [...techStack, ...techStack, ...techStack]
+  // 6 copies of a 3-row grid = an even number of columns, so the -50% marquee loop has no visible jump.
+  const cards = Array.from({ length: 6 }, () => techStack).flat()
 
   return (
     <section ref={section} id="lab" className="px-4 py-10 md:px-10 md:py-18 lg:py-24">

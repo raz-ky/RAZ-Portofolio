@@ -450,13 +450,29 @@ body { overflow-x: hidden; background: #07050c; }
 
 @media (max-width: 767px) {
   .about-section {
-    overflow: visible;
+    /* Decorative orbits and the full-bleed marquee must not widen the layout viewport. */
+    overflow-x: clip;
+    overflow-y: visible;
   }
 
   .about-section::before {
     inset: 8% 3% auto 3%;
     height: 72%;
     filter: blur(18px);
+  }
+
+  .about-photo-wrap-mobile .orbit-one {
+    width: min(320px, 82vw);
+    height: min(320px, 82vw);
+    right: -6px;
+    top: -6px;
+  }
+
+  .about-photo-wrap-mobile .orbit-two {
+    width: min(420px, 88vw);
+    height: min(420px, 88vw);
+    left: -8px;
+    bottom: -18px;
   }
 }
 

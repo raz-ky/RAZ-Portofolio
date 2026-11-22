@@ -132,7 +132,8 @@ export default function Hero() {
   ]
   const mobilePhotoCluster = photoSequence.slice(0, 3)
   const photoDividers = ['🖥️', '📸', '🛠️']
-  const photoTrackItems = [...photoSequence, ...photoSequence, ...photoSequence, ...photoSequence, ...photoSequence, ...photoSequence, ...photoSequence]
+  // An even number of identical copies keeps the -50% wrap seamless.
+  const photoTrackItems = Array.from({ length: 8 }, () => photoSequence).flat()
   const bubbleIcons = [
     { symbol: '📸', className: 'hero-bubble-icon bubble-icon-1' },
     { symbol: '🖥️', className: 'hero-bubble-icon bubble-icon-2' },
@@ -173,11 +174,9 @@ export default function Hero() {
                 <div className="h-16 w-16 overflow-hidden rounded-[1.1rem] border border-white/15 bg-white/5 shadow-[0_0_16px_rgba(32,232,208,0.12)] md:h-28 md:w-44">
                   <img src={item} alt="" className="h-full w-full object-cover" />
                 </div>
-                {(index + 1) % photoSequence.length !== 0 && index !== photoTrackItems.length - 1 && (
-                  <span className="photo-divider text-xl text-[#20e8d0] drop-shadow-[0_0_12px_rgba(32,232,208,0.8)] md:text-2xl">
-                    {photoDividers[(index + 1) % photoDividers.length]}
-                  </span>
-                )}
+                <span className="photo-divider text-xl text-[#20e8d0] drop-shadow-[0_0_12px_rgba(32,232,208,0.8)] md:text-2xl">
+                  {photoDividers[index % photoDividers.length]}
+                </span>
               </div>
             ))}
           </div>
